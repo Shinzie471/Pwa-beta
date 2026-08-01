@@ -1,10 +1,10 @@
 {
-  "name": "My Progressive Web App",
-  "short_name": "My PWA",
+  "name": "Jdl Inventory",
+  "short_name": "Jdl Inventory",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#f4f4f9",
-  "theme_color": "#333333",
+  "background_color": "#1c2430",
+  "theme_color": "#1c2430",
   "icons": [
     {
       "src": "icon-192.png",
