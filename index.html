@@ -1,9 +1,42 @@
-<link rel="manifest" href="manifest.json">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My First PWA</title>
+  <!-- Correct relative path to manifest -->
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f9;
+      margin-top: 50px;
+    }
+    .app-card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      display: inline-block;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; }
+  </style>
+</head>
+<body>
 
-<script>
-  if ('serviceWorker' in navigator) {
-    // Removed the slash before sw.js
-    navigator.serviceWorker.register('sw.js')
-      .then(() => console.log('Service Worker Registered'));
-  }
-</script>
+  <div class="app-card">
+    <h1>Welcome to My PWA</h1>
+    <p>If all files are uploaded correctly, Chrome will show an install button in the address bar!</p>
+  </div>
+
+  <script>
+    // Correct relative path to service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Service Worker Registered Successfully'))
+        .catch((err) => console.log('Service Worker Registration Failed: ', err));
+    }
+  </script>
+</body>
+</html>
