@@ -188,34 +188,26 @@ function initAuth(db) {
     });
   };
 
-  // Wire auth button: toggle sign-in/out with Google popup (compat)
+  // Wire auth button: sign out only from the main page
   authBtn.addEventListener('click', async () => {
     const user = firebase.auth().currentUser;
     if (!user) {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try {
-        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-        await firebase.auth().signInWithRedirect(provider);
-      } catch (err) {
-        console.warn('Sign-in failed', err);
-        showToast('Sign-in failed');
-      }
-    } else {
-      await firebase.auth().signOut();
-      localStorage.removeItem('jdl-user');
-      localStorage.removeItem('jdl-uid');
-      clearRemoteBadge();
-      userDisplay.textContent = '';
-      updateAuthButtonVisibility();
+      window.location.href = 'login.html';
+      return;
     }
+    await firebase.auth().signOut();
+    localStorage.removeItem('jdl-user');
+    localStorage.removeItem('jdl-uid');
+    clearRemoteBadge();
+    userDisplay.textContent = '';
+    updateAuthButtonVisibility();
+    window.location.href = 'login.html';
   });
 
   // listen for auth state changes
   firebase.auth().onAuthStateChanged((user) => {
     startListening(user);
-    // update auth button label and visibility
-    const u = firebase.auth().currentUser;
-    authBtn.textContent = u ? 'Sign out' : 'Sign in';
+    authBtn.textContent = 'Sign out';
     updateAuthButtonVisibility();
   });
 }
@@ -561,12 +553,16 @@ const init = async () => {
   loadAdminState();
   updateAuthButtonVisibility();
   await initSync();
-  if (!await ensureSignedInOrRedirect()) return;
   renderInventory();
   renderChangeLog();
   bindCsvHandlers();
   registerServiceWorker();
 };
+
+async function startup() {
+  if (!(await ensureSignedInOrRedirect())) return;
+  await init();
+}
 
 // run pre-init check is handled after Firebase config/initialization
 
@@ -822,4 +818,4 @@ function parseAndImportCsv(text) {
   }
 }
 
-init();
+startup();
