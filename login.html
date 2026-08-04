@@ -40,24 +40,66 @@
         const cfg = await resp.json();
         if (!cfg || cfg.provider !== 'firebase' || !cfg.firebase) return false;
         firebase.initializeApp(cfg.firebase);
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
         return true;
       } catch (e) { return false; }
     }
 
-    document.getElementById('googleSignIn').addEventListener('click', async () => {
+    async function handleGoogleSignIn() {
       const ok = await tryInitFirebase();
-      if (!ok) { MSG.textContent = 'Firebase not configured (sync-config.json missing).'; return; }
+      if (!ok) { MSG.textContent = 'Firebase not configured (sync-config.json missing).'; return false; }
       const provider = new firebase.auth.GoogleAuthProvider();
       try {
-        const result = await firebase.auth().signInWithPopup(provider);
-        const user = result.user;
+        await firebase.auth().signInWithRedirect(provider);
+        return true;
+      } catch (err) {
+        MSG.textContent = 'Google sign-in failed';
+        console.warn(err);
+        return false;
+      }
+    }
+
+    document.getElementById('googleSignIn').addEventListener('click', async () => {
+      await handleGoogleSignIn();
+    });
+
+    let firebaseReady = false;
+
+    async function finishRedirectSignIn() {
+      if (!firebaseReady) {
+        firebaseReady = await tryInitFirebase();
+      }
+      if (!firebaseReady) return;
+      try {
+        const result = await firebase.auth().getRedirectResult();
+        const user = result.user || firebase.auth().currentUser;
         if (user) {
           localStorage.setItem('jdl-user', JSON.stringify({type:'google',email:user.email || user.uid}));
-          // also store uid for sync detection
           localStorage.setItem('jdl-uid', user.uid);
           window.location.href = 'index.html';
         }
-      } catch (err) { MSG.textContent = 'Sign-in failed'; console.warn(err); }
+      } catch (err) {
+        console.warn('Redirect sign-in did not complete:', err);
+      }
+    }
+
+    window.addEventListener('load', async () => {
+      const already = localStorage.getItem('jdl-user') || localStorage.getItem('jdl-admin');
+      if (already) {
+        window.location.href = 'index.html';
+        return;
+      }
+      firebaseReady = await tryInitFirebase();
+      if (firebaseReady) {
+        firebase.auth().onAuthStateChanged((user) => {
+          if (user) {
+            localStorage.setItem('jdl-user', JSON.stringify({type:'google',email:user.email || user.uid}));
+            localStorage.setItem('jdl-uid', user.uid);
+            window.location.href = 'index.html';
+          }
+        });
+        finishRedirectSignIn();
+      }
     });
 
     document.getElementById('adminSubmit').addEventListener('click', ()=>{
