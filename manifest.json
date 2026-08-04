@@ -19,12 +19,6 @@
 ],
   "screenshots": [
     {
-      "src": "screenshot-desktop.jpg",
-      "sizes": "1919x1079",
-      "type": "image/jpeg",
-      "form_factor": "wide"
-    },
-    {
       "src": "screenshot-mobile.jpg",
       "sizes": "930x1046",
       "type": "image/jpeg",
