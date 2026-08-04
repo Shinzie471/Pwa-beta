@@ -1,6 +1,8 @@
-const CACHE_NAME = 'jdl-inventory-v1';
+const CACHE_NAME = 'jdl-inventory-v2';
 const ASSETS = [
   'index.html',
+  'login.html',
+  'buy.html',
   'manifest.json',
   'style.css',
   'app.js',
