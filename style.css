@@ -112,7 +112,7 @@ button:hover {
 #searchRow {
   display: grid;
   gap: 1rem;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   align-items: center;
 }
 
@@ -120,6 +120,13 @@ button:hover {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#inventoryTable table {
+  width: 100%;
 }
 
 #inventoryTable th,
@@ -127,6 +134,7 @@ button:hover {
   padding: 14px 12px;
   border-bottom: 1px solid #e5e7eb;
   text-align: left;
+  white-space: nowrap;
 }
 
 #inventoryTable th {
@@ -146,14 +154,14 @@ button:hover {
 }
 
 .action-group button {
-  flex: 1;
-  min-width: 120px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .toast {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: 16px;
+  bottom: 16px;
   background: rgba(31, 41, 55, 0.95);
   color: white;
   border-radius: 14px;
@@ -195,9 +203,60 @@ button:hover {
   color: #991b1b;
 }
 
+@media (max-width: 840px) {
+  main {
+    padding: 18px;
+  }
+
+  header {
+    padding: 26px 18px;
+  }
+
+  .panel {
+    padding: 18px;
+  }
+
+  .stat {
+    padding: 16px 18px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #searchRow {
+    grid-template-columns: 1fr;
+  }
+
+  .action-group {
+    justify-content: stretch;
+  }
+
+  #inventoryTable th,
+  #inventoryTable td {
+    padding: 12px 10px;
+  }
+}
+
 @media (max-width: 640px) {
   .status-bar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  header h1 {
+    font-size: clamp(1.75rem, 6vw, 2.5rem);
+  }
+
+  header p {
+    font-size: 0.95rem;
+  }
+
+  #installButton {
+    width: 100%;
+  }
+
+  .panel {
+    border-radius: 18px;
   }
 }
