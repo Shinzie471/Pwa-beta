@@ -25,7 +25,7 @@
         <span id="userDisplay" style="color:white;margin-left:6px;"></span>
         <span id="syncStatus" class="status-pill" style="background:rgba(255,255,255,0.15);color:white;">Sync: local</span>
         <span id="remoteBadge" class="status-pill" style="display:none;background:#fffbeb;color:#92400e;">New remote</span>
-        <button id="buyListBtn" style="background:#10b981;color:white;border-radius:12px;padding:8px 12px;border:none;margin-left:6px;">To buy</button>
+        <a id="buyListBtn" href="buy.html" style="display:inline-flex;background:#10b981;color:white;border-radius:12px;padding:8px 12px;text-decoration:none;margin-left:6px;">To buy</a>
       </div>
     </div>
   </header>
@@ -34,6 +34,7 @@
       <div>
         <strong id="storeName">Retail Store Inventory</strong>
         <p>Track low-stock items, search inventory, and add new products for restock alerts.</p>
+        <p id="configWarning" style="color:#f59e0b;margin-top:6px;display:none;font-size:0.95rem;">Firebase is not configured; sync will remain local until you update <code>sync-config.json</code>.</p>
       </div>
       <span id="onlineStatus" class="status-pill"></span>
     </div>
