@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>To buy</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;margin:18px}
+    .panel{max-width:900px;margin:0 auto}
+    .group{margin:12px 0;padding:10px;border-radius:8px;background:#fff}
+    h1{margin-bottom:6px}
+    .back{display:inline-block;margin-bottom:12px}
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <a class="back" href="index.html">← Back</a>
+    <h1>To buy:</h1>
+    <div id="lowGroup" class="group">
+      <h3>Low stock (below 10)</h3>
+      <div id="lowList">(none)</div>
+    </div>
+    <div id="okGroup" class="group">
+      <h3>Enough stock (10 or more)</h3>
+      <div id="okList">(none)</div>
+    </div>
+  </main>
+  <script>
+    const STORAGE_KEY = 'jdl-inventory-items';
+    function formatCount(v){return Number(v).toLocaleString();}
+    function render() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      let items = [];
+      try { items = JSON.parse(raw) || []; } catch(e) { items = []; }
+      const low = items.filter(i => Number(i.quantity) < 10);
+      const ok = items.filter(i => Number(i.quantity) >= 10);
+      const lowList = document.getElementById('lowList');
+      const okList = document.getElementById('okList');
+      lowList.innerHTML = low.length ? low.map(it => `<div style="padding:6px 0;border-bottom:1px solid #eee;"><strong>${it.name}</strong> — ${formatCount(it.quantity)}</div>`).join('') : '(none)';
+      okList.innerHTML = ok.length ? ok.map(it => `<div style="padding:6px 0;border-bottom:1px solid #eee;"><strong>${it.name}</strong> — ${formatCount(it.quantity)}</div>`).join('') : '(none)';
+    }
+    window.addEventListener('storage', (e)=>{ if (e.key === STORAGE_KEY) render(); });
+    window.addEventListener('load', render);
+  </script>
+</body>
+</html>
