@@ -9,8 +9,15 @@ const searchInput = document.getElementById('searchInput');
 const form = document.getElementById('addItemForm');
 const toast = document.getElementById('toast');
 const storeName = document.getElementById('storeName');
+const syncStatus = document.getElementById('syncStatus');
 let deferredPrompt;
 let items = [];
+
+// Remote sync state
+let remoteEnabled = false;
+let remoteDocRef = null;
+let isApplyingRemote = false;
+let remoteDebounceTimer = null;
 
 const defaultItems = [
   { id: crypto.randomUUID(), name: 'Blue Denim Jeans', quantity: 4, threshold: 5 },
@@ -23,6 +30,20 @@ const formatCount = (value) => value.toLocaleString();
 
 const saveItems = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+};
+
+const pushRemoteDebounced = () => {
+  if (!remoteEnabled || !remoteDocRef || isApplyingRemote) return;
+  if (remoteDebounceTimer) clearTimeout(remoteDebounceTimer);
+  remoteDebounceTimer = setTimeout(async () => {
+    try {
+      await remoteDocRef.set({ items, updatedAt: Date.now() });
+      console.log('Pushed inventory to remote');
+    } catch (err) {
+      console.warn('Failed pushing to remote', err);
+      showToast('Cloud sync failed');
+    }
+  }, 700);
 };
 
 const loadItems = () => {
@@ -86,6 +107,7 @@ const updateItem = (id, modifier) => {
   });
   saveItems();
   renderInventory();
+  pushRemoteDebounced();
 };
 
 const removeItem = (id) => {
@@ -93,6 +115,7 @@ const removeItem = (id) => {
   saveItems();
   renderInventory();
   showToast('Inventory item removed');
+  pushRemoteDebounced();
 };
 
 inventoryBody.addEventListener('click', (event) => {
@@ -127,6 +150,7 @@ form.addEventListener('submit', (event) => {
   form.reset();
   renderInventory();
   showToast('Item added to inventory');
+  pushRemoteDebounced();
 });
 
 lowStockFilter.addEventListener('change', renderInventory);
@@ -171,6 +195,66 @@ const init = () => {
   onlineStatus.classList.add(navigator.onLine ? 'online' : 'offline');
   loadItems();
   renderInventory();
+  initSync();
 };
+ 
+init();
+
+// --- Sync implementation -------------------------------------------------
+async function initSync() {
+  // Try loading a config file `sync-config.json` next to the app.
+  try {
+    const resp = await fetch('sync-config.json', { cache: 'no-store' });
+    if (!resp.ok) {
+      syncStatus && (syncStatus.textContent = 'Sync: local');
+      return;
+    }
+    const cfg = await resp.json();
+    if (!cfg || cfg.provider !== 'firebase' || !cfg.firebase) {
+      syncStatus && (syncStatus.textContent = 'Sync: local');
+      return;
+    }
+
+    // Initialize Firebase (compat) and Firestore
+    try {
+      firebase.initializeApp(cfg.firebase);
+      const db = firebase.firestore();
+      remoteDocRef = db.collection('inventories').doc('default');
+      remoteEnabled = true;
+      syncStatus && (syncStatus.textContent = 'Sync: cloud');
+
+      // Listen for remote updates
+      remoteDocRef.onSnapshot((snap) => {
+        if (!snap.exists) return;
+        const data = snap.data();
+        if (!data) return;
+        const remoteItems = data.items || [];
+        // Avoid clobbering local edits while applying remote
+        isApplyingRemote = true;
+        items = remoteItems.map((it) => ({ ...it }));
+        saveItems();
+        renderInventory();
+        isApplyingRemote = false;
+      }, (err) => {
+        console.warn('Remote listener error', err);
+        showToast('Cloud sync listener failed');
+      });
+
+      // Ensure remote has an initial document
+      const current = await remoteDocRef.get();
+      if (!current.exists) {
+        await remoteDocRef.set({ items, updatedAt: Date.now() });
+      }
+    } catch (err) {
+      console.warn('Firebase init failed', err);
+      syncStatus && (syncStatus.textContent = 'Sync: local');
+      remoteEnabled = false;
+    }
+  } catch (err) {
+    // No config file or network error - remain local-only
+    syncStatus && (syncStatus.textContent = 'Sync: local');
+    console.log('No sync-config.json found, running local-only');
+  }
+}
 
 init();
