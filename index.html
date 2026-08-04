@@ -9,15 +9,23 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
 <body>
   <header>
     <div>
       <h1>JDL Store Inventory Tracker</h1>
       <p>Keep your store stocked with a fast installable PWA built for retail managers.</p>
-      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;align-items:center;">
         <button id="installButton">Install inventory app</button>
+        <button id="updateButton" style="display:none;">Update App</button>
+        <button id="authBtn" style="background:#ffffff;color:#2563eb;border-radius:12px;padding:10px 14px;border:none;">Sign in</button>
+        <button id="adminLoginBtn" style="background:#f3f4f6;color:#111827;border-radius:12px;padding:10px 12px;border:none;margin-left:6px;">Admin login</button>
+        <button id="viewToggleBtn" style="display:none;background:#fde68a;color:#92400e;border-radius:12px;padding:8px 10px;border:none;margin-left:6px;">View only: Off</button>
+        <span id="userDisplay" style="color:white;margin-left:6px;"></span>
         <span id="syncStatus" class="status-pill" style="background:rgba(255,255,255,0.15);color:white;">Sync: local</span>
+        <span id="remoteBadge" class="status-pill" style="display:none;background:#fffbeb;color:#92400e;">New remote</span>
+        <button id="buyListBtn" style="background:#10b981;color:white;border-radius:12px;padding:8px 12px;border:none;margin-left:6px;">To buy</button>
       </div>
     </div>
   </header>
@@ -53,21 +61,36 @@
           Show only low-stock items
         </label>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center;">
+        <button id="exportCsv">Export CSV</button>
+        <label style="display:inline-flex;align-items:center;gap:8px;">
+          <input id="importFile" type="file" accept="text/csv" style="display:none">
+          <button id="importBtn" type="button">Import CSV</button>
+        </label>
+      </div>
       <div id="searchRow">
         <input id="searchInput" type="search" placeholder="Search inventory by item name...">
       </div>
-      <table id="inventoryTable">
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Quantity</th>
-            <th>Threshold</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="inventoryBody"></tbody>
-      </table>
+      <div id="inventoryTable">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Threshold</th>
+              <th>Updated</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Change Log</h2>
+      <div id="changeLog" style="max-height:240px;overflow:auto;padding-top:8px;"></div>
     </section>
 
     <section class="panel">
