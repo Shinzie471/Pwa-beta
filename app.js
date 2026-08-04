@@ -10,6 +10,7 @@ const form = document.getElementById('addItemForm');
 const toast = document.getElementById('toast');
 const storeName = document.getElementById('storeName');
 const syncStatus = document.getElementById('syncStatus');
+const authBtn = document.getElementById('authBtn');
 let deferredPrompt;
 let items = [];
 
@@ -38,6 +39,12 @@ const defaultItems = [
   { id: crypto.randomUUID(), name: 'Leather Belts', quantity: 2, threshold: 5 },
   { id: crypto.randomUUID(), name: 'Sneaker Stock', quantity: 22, threshold: 15 }
 ];
+const configWarning = document.getElementById('configWarning');
+
+function updateAuthButtonVisibility() {
+  const loggedIn = !!localStorage.getItem('jdl-user') || localStorage.getItem('jdl-admin') === 'true';
+  if (authBtn) authBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+}
 
 const formatCount = (value) => value.toLocaleString();
 const formatDate = (ts) => {
@@ -107,6 +114,11 @@ function initAuth(db) {
     }
     userDisplay.textContent = user.email || user.uid;
     syncStatus.textContent = 'Sync: cloud';
+    // store signed-in state locally so device remembers the login
+    try {
+      localStorage.setItem('jdl-user', JSON.stringify({ type: 'google', email: user.email || user.uid }));
+      localStorage.setItem('jdl-uid', user.uid);
+    } catch (e) {}
     // use per-user document path
     const uid = user.uid;
     remoteDocRef = db.collection('inventories').doc(uid);
@@ -182,23 +194,87 @@ function initAuth(db) {
     if (!user) {
       const provider = new firebase.auth.GoogleAuthProvider();
       try {
-        await firebase.auth().signInWithPopup(provider);
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        await firebase.auth().signInWithRedirect(provider);
       } catch (err) {
         console.warn('Sign-in failed', err);
         showToast('Sign-in failed');
       }
     } else {
       await firebase.auth().signOut();
+      localStorage.removeItem('jdl-user');
+      localStorage.removeItem('jdl-uid');
       clearRemoteBadge();
+      userDisplay.textContent = '';
+      updateAuthButtonVisibility();
     }
   });
 
   // listen for auth state changes
   firebase.auth().onAuthStateChanged((user) => {
     startListening(user);
-    // update auth button label
+    // update auth button label and visibility
     const u = firebase.auth().currentUser;
     authBtn.textContent = u ? 'Sign out' : 'Sign in';
+    updateAuthButtonVisibility();
+  });
+}
+
+function subscribeRemoteDoc(docRef, label) {
+  if (!docRef) return;
+  if (remoteUnsub) { remoteUnsub(); remoteUnsub = null; }
+  remoteUnsub = docRef.onSnapshot((snap) => {
+    if (!snap.exists) {
+      docRef.set({ items, updatedAt: Date.now() }).catch(() => {});
+      return;
+    }
+    const data = snap.data() || {};
+    const remoteItems = data.items || [];
+    const remoteUpdated = data.updatedAt || 0;
+    if (remoteUpdated && remoteUpdated > lastRemoteUpdatedAt) {
+      const localMap = new Map(items.map(i => [i.id, i]));
+      const remoteMap = new Map(remoteItems.map(i => [i.id, i]));
+      let willChange = false;
+      const ids = new Set([...localMap.keys(), ...remoteMap.keys()]);
+      for (const id of ids) {
+        const l = localMap.get(id);
+        const r = remoteMap.get(id);
+        if (!l && r) { willChange = true; break; }
+        if (l && !r) { willChange = true; break; }
+        if (l && r) {
+          const lts = l.updatedAt || 0;
+          const rts = r.updatedAt || 0;
+          if (rts > lts) { willChange = true; break; }
+        }
+      }
+      if (willChange) showRemoteBadge();
+    }
+    lastRemoteUpdatedAt = remoteUpdated;
+
+    isApplyingRemote = true;
+    const localMap = new Map(items.map(i => [i.id, i]));
+    const remoteMap = new Map(remoteItems.map(i => [i.id, i]));
+    const mergedMap = new Map();
+    const ids = new Set([...localMap.keys(), ...remoteMap.keys()]);
+    for (const id of ids) {
+      const local = localMap.get(id);
+      const remote = remoteMap.get(id);
+      if (local && remote) {
+        const lts = local.updatedAt || 0;
+        const rts = remote.updatedAt || 0;
+        if (rts > lts) mergedMap.set(id, remote);
+        else { mergedMap.set(id, local); needsPush = true; }
+      } else if (remote && !local) mergedMap.set(id, remote);
+      else if (local && !remote) { mergedMap.set(id, local); needsPush = true; }
+    }
+    items = Array.from(mergedMap.values());
+    saveItems();
+    renderInventory();
+    isApplyingRemote = false;
+    attemptFlushRemote();
+  }, (err) => {
+    console.warn('Remote listener error', err);
+    showToast('Cloud sync listener failed');
   });
 }
 
@@ -477,56 +553,132 @@ if (buyListBtn) buyListBtn.addEventListener('click', () => {
   window.location.href = 'buy.html';
 });
 
-const init = () => {
+const init = async () => {
   storeName.textContent = 'Retail Store Inventory';
   onlineStatus.textContent = navigator.onLine ? 'Online' : 'Offline';
   onlineStatus.classList.add(navigator.onLine ? 'online' : 'offline');
   loadItems();
   loadAdminState();
+  updateAuthButtonVisibility();
+  await initSync();
+  if (!await ensureSignedInOrRedirect()) return;
   renderInventory();
   renderChangeLog();
   bindCsvHandlers();
   registerServiceWorker();
-  initSync();
 };
 
-// Ensure user is signed in (either admin or via jdl-user marker). If not, redirect to login.
-function ensureSignedInOrRedirect() {
+// run pre-init check is handled after Firebase config/initialization
+
+// --- Auth gating ---------------------------------------------------------
+async function ensureSignedInOrRedirect() {
   try {
-    const cur = localStorage.getItem('jdl-user');
+    const storedUser = localStorage.getItem('jdl-user');
     const admin = localStorage.getItem('jdl-admin') === 'true';
-    if (!cur && !admin) {
-      // not signed in, go to login page
-      window.location.href = 'login.html';
+    if (storedUser || admin) return true;
+
+    // If Firebase is configured, wait for auth state persistence to resolve.
+    if (window.firebase && firebase.apps && firebase.apps.length > 0) {
+      const auth = firebase.auth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        localStorage.setItem('jdl-user', JSON.stringify({ type: 'google', email: currentUser.email || currentUser.uid }));
+        localStorage.setItem('jdl-uid', currentUser.uid);
+        updateAuthButtonVisibility();
+        return true;
+      }
+
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          unsubscribe();
+          window.location.href = 'login.html';
+          resolve(false);
+        }, 1500);
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+          if (user) {
+            clearTimeout(timeout);
+            unsubscribe();
+            localStorage.setItem('jdl-user', JSON.stringify({ type: 'google', email: user.email || user.uid }));
+            localStorage.setItem('jdl-uid', user.uid);
+            updateAuthButtonVisibility();
+            resolve(true);
+          }
+        });
+      });
     }
-  } catch (e) { window.location.href = 'login.html'; }
+
+    window.location.href = 'login.html';
+    return false;
+  } catch (e) {
+    window.location.href = 'login.html';
+    return false;
+  }
 }
 
-// run pre-init check
-ensureSignedInOrRedirect();
-
 // --- Sync implementation -------------------------------------------------
+function getStoredUserMarker() {
+  try {
+    return JSON.parse(localStorage.getItem('jdl-user') || 'null');
+  } catch (e) {
+    return null;
+  }
+}
+
+function isFirebaseConfigValid(cfg) {
+  if (!cfg || typeof cfg !== 'object') return false;
+  const placeholders = ['YOUR_API_KEY', 'YOUR_PROJECT', 'SENDER_ID', 'APP_ID'];
+  return ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'].every((key) => {
+    const value = cfg[key];
+    return typeof value === 'string' && value.trim() && !placeholders.some((ph) => value.includes(ph));
+  });
+}
+
+function showConfigWarning() {
+  if (!configWarning) return;
+  configWarning.style.display = 'block';
+}
+
+function hideConfigWarning() {
+  if (!configWarning) return;
+  configWarning.style.display = 'none';
+}
+
 async function initSync() {
   // Try loading a config file `sync-config.json` next to the app.
   try {
     const resp = await fetch('sync-config.json', { cache: 'no-store' });
     if (!resp.ok) {
       syncStatus && (syncStatus.textContent = 'Sync: local');
+      showConfigWarning();
       return;
     }
     const cfg = await resp.json();
-    if (!cfg || cfg.provider !== 'firebase' || !cfg.firebase) {
+    if (!cfg || cfg.provider !== 'firebase' || !cfg.firebase || !isFirebaseConfigValid(cfg.firebase)) {
       syncStatus && (syncStatus.textContent = 'Sync: local');
+      showConfigWarning();
       return;
     }
 
-    // Initialize Firebase (compat) and Firestore, then init auth
+    hideConfigWarning();
+
+    // Initialize Firebase (compat) and Firestore, then init auth or admin sync
     try {
+      if (!isFirebaseConfigValid(cfg.firebase)) {
+        throw new Error('Invalid Firebase config');
+      }
       firebase.initializeApp(cfg.firebase);
       const db = firebase.firestore();
-      // initialize auth UI and state handling
-      initAuth(db);
-      syncStatus && (syncStatus.textContent = 'Sync: auth');
+      const storedUser = getStoredUserMarker();
+      if (storedUser && storedUser.type === 'admin') {
+        // Admin login uses a shared admin document if Firebase is configured.
+        remoteDocRef = db.collection('inventories').doc('admin');
+        remoteEnabled = true;
+        syncStatus && (syncStatus.textContent = 'Sync: admin');
+        subscribeRemoteDoc(remoteDocRef, 'Admin');
+      } else {
+        initAuth(db);
+        syncStatus && (syncStatus.textContent = 'Sync: auth');
+      }
     } catch (err) {
       console.warn('Firebase init failed', err);
       syncStatus && (syncStatus.textContent = 'Sync: local');
