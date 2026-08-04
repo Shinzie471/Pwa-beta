@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JDL Inventory</title>
+  <meta name="description" content="Retail inventory tracker for store teams. Add items, track low stock, and install the app to your device.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Retail Inventory Tracker</h1>
+      <p>Keep your store stocked with a fast installable PWA built for retail managers.</p>
+      <button id="installButton">Install inventory app</button>
+    </div>
+  </header>
+  <main>
+    <div class="panel status-bar">
+      <div>
+        <strong id="storeName">Retail Store Inventory</strong>
+        <p>Track low-stock items, search inventory, and add new products for restock alerts.</p>
+      </div>
+      <span id="onlineStatus" class="status-pill"></span>
+    </div>
+
+    <section class="panel grid stats">
+      <div class="stat">
+        <strong id="totalItems">0</strong>
+        Total items
+      </div>
+      <div class="stat">
+        <strong id="lowStockTotal">0</strong>
+        Low stock
+      </div>
+      <div class="stat">
+        <strong>Offline-ready</strong>
+        Works without a network connection
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="status-bar">
+        <h2>Manage inventory</h2>
+        <label>
+          <input id="lowStockFilter" type="checkbox">
+          Show only low-stock items
+        </label>
+      </div>
+      <div id="searchRow">
+        <input id="searchInput" type="search" placeholder="Search inventory by item name...">
+      </div>
+      <table id="inventoryTable">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Quantity</th>
+            <th>Threshold</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryBody"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Add new product</h2>
+      <form id="addItemForm" class="form-grid">
+        <input id="itemName" name="itemName" type="text" placeholder="Item name" required>
+        <input id="itemQuantity" name="itemQuantity" type="number" min="0" value="0" placeholder="Quantity" required>
+        <input id="itemThreshold" name="itemThreshold" type="number" min="0" value="1" placeholder="Low stock threshold" required>
+        <button type="submit">Add item</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Service Worker Registered Successfully'))
+        .catch((err) => console.log('Service Worker Registration Failed:', err));
+    }
+  </script>
+</body>
+</html>
