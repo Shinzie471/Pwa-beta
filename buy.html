@@ -29,7 +29,14 @@
   <script>
     const STORAGE_KEY = 'jdl-inventory-items';
     function formatCount(v){return Number(v).toLocaleString();}
+    function isSignedIn() {
+      try { return !!localStorage.getItem('jdl-user') || localStorage.getItem('jdl-admin') === 'true'; } catch(e) { return false; }
+    }
     function render() {
+      if (!isSignedIn()) {
+        window.location.href = 'login.html';
+        return;
+      }
       const raw = localStorage.getItem(STORAGE_KEY);
       let items = [];
       try { items = JSON.parse(raw) || []; } catch(e) { items = []; }
