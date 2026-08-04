@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sign in</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>body{font-family:system-ui,Segoe UI,Roboto,Arial;padding:20px} .box{max-width:420px;margin:48px auto;padding:16px;border-radius:8px;background:#fff} button{padding:10px 12px;border-radius:8px;border:none}</style>
+</head>
+<body>
+  <main class="box">
+    <h1>Welcome — sign in</h1>
+    <p>Please sign in to continue. You can sign in with Google (if configured) or use the local admin account.</p>
+    <div style="margin:12px 0">
+      <button id="googleSignIn" style="background:#4285f4;color:white;width:100%;">Sign in with Google</button>
+    </div>
+    <hr />
+    <div style="margin-top:12px">
+      <h3>Admin login</h3>
+      <label>Username<br><input id="adminUser" type="text" placeholder="Username" style="width:100%"></label>
+      <label>Password<br><input id="adminPass" type="password" placeholder="Password" style="width:100%"></label>
+      <div style="margin-top:8px">
+        <button id="adminSubmit" style="background:#111827;color:white;width:100%">Sign in as admin</button>
+      </div>
+    </div>
+    <p style="color:#666;margin-top:12px;font-size:0.9rem">Note: local admin uses username <strong>Jdl2026</strong> and password <strong>JDL@2026</strong>.</p>
+    <div id="msg" style="color:#b91c1c;margin-top:8px"></div>
+  </main>
+  <script>
+    const ADMIN_USER = 'Jdl2026';
+    const ADMIN_PASSWORD = 'JDL@2026';
+    const MSG = document.getElementById('msg');
+
+    async function tryInitFirebase() {
+      try {
+        const resp = await fetch('sync-config.json',{cache:'no-store'});
+        if (!resp.ok) return false;
+        const cfg = await resp.json();
+        if (!cfg || cfg.provider !== 'firebase' || !cfg.firebase) return false;
+        firebase.initializeApp(cfg.firebase);
+        return true;
+      } catch (e) { return false; }
+    }
+
+    document.getElementById('googleSignIn').addEventListener('click', async () => {
+      const ok = await tryInitFirebase();
+      if (!ok) { MSG.textContent = 'Firebase not configured (sync-config.json missing).'; return; }
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        const result = await firebase.auth().signInWithPopup(provider);
+        const user = result.user;
+        if (user) {
+          localStorage.setItem('jdl-user', JSON.stringify({type:'google',email:user.email || user.uid}));
+          // also store uid for sync detection
+          localStorage.setItem('jdl-uid', user.uid);
+          window.location.href = 'index.html';
+        }
+      } catch (err) { MSG.textContent = 'Sign-in failed'; console.warn(err); }
+    });
+
+    document.getElementById('adminSubmit').addEventListener('click', ()=>{
+      const u = document.getElementById('adminUser').value || '';
+      const p = document.getElementById('adminPass').value || '';
+      if (u.trim() === ADMIN_USER && p === ADMIN_PASSWORD) {
+        // mark admin signed in
+        localStorage.setItem('jdl-user', JSON.stringify({type:'admin',user:ADMIN_USER}));
+        localStorage.setItem('jdl-admin','true');
+        window.location.href = 'index.html';
+      } else {
+        MSG.textContent = 'Invalid credentials';
+      }
+    });
+
+    // If already signed in, redirect to index
+    try { const cur = localStorage.getItem('jdl-user'); if (cur) window.location.href = 'index.html'; } catch(e){}
+  </script>
+</body>
+</html>
