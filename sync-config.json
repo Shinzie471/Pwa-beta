@@ -1,11 +1,12 @@
 {
   "provider": "firebase",
   "firebase": {
-    "apiKey": "YOUR_API_KEY",
-    "authDomain": "YOUR_PROJECT.firebaseapp.com",
-    "projectId": "YOUR_PROJECT",
-    "storageBucket": "YOUR_PROJECT.appspot.com",
-    "messagingSenderId": "SENDER_ID",
-    "appId": "APP_ID"
+    "apiKey": "AIzaSyBoTATZrxCAaQaSemwcv8josReSu7iAb6Y",
+    "authDomain": "jdl-inventory.firebaseapp.com",
+    "projectId": "jdl-inventory",
+    "storageBucket": "jdl-inventory.firebasestorage.app",
+    "messagingSenderId": "1059906079162",
+    "appId": "1:1059906079162:web:0b943c902573d3b85c7583",
+    "measurementId": "G-NVQ3DW646L"
   }
 }
