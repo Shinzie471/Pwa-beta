@@ -1,28 +1,28 @@
-const CACHE_NAME = 'pwa-cache-v1';
+const CACHE_NAME = 'jdl-inventory-v1';
 const ASSETS = [
   'index.html',
   'manifest.json'
 ];
 
-// Install and cache foundational files
-self.addEventListener('install', (e) => {
-  e.waitUntil(
+// Install stage: cache critical files
+self.addEventListener('install', (event) => {
+  event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS);
     })
   );
 });
 
-// Activate worker and clean up old caches
-self.addEventListener('activate', (e) => {
-  console.log('Service Worker Activated');
+// Activate stage: clean up old caches
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activated');
 });
 
-// Fetch data from cache first, then network
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((response) => {
-      return response || fetch(e.request);
+// Fetch stage: mandatory requirement for PWA installation
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      return cachedResponse || fetch(event.request);
     })
   );
 });
