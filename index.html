@@ -7,13 +7,18 @@
   <meta name="description" content="Retail inventory tracker for store teams. Add items, track low stock, and install the app to your device.">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <header>
     <div>
       <h1>JDL Store Inventory Tracker</h1>
       <p>Keep your store stocked with a fast installable PWA built for retail managers.</p>
-      <button id="installButton">Install inventory app</button>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+        <button id="installButton">Install inventory app</button>
+        <span id="syncStatus" class="status-pill" style="background:rgba(255,255,255,0.15);color:white;">Sync: local</span>
+      </div>
     </div>
   </header>
   <main>
